@@ -14,6 +14,24 @@ var budgetController = (function(){
         this.id = id;
         this.description = description;
         this.value = value;
+        this.percentage = -1;
+    };
+
+    //Adicionando o método ao protótipo do objeto, todos os objetos criados terão acesso por padrão
+
+    Expense.prototype.calcPercentage = function(totalIncome){
+
+        if(totalIncome > 0){
+            this.percentage = Math.round(( this.value / totalIncome) * 100);
+        }else{
+            this.percentage = -1;
+        }
+    };
+
+    Expense.prototype.getPercentage = function(){
+
+        return this.percentage;
+
     };
 
     var Income = function(id, description, value){
@@ -74,6 +92,22 @@ var budgetController = (function(){
             
             //Retorna o novo elemento
             return newItem;
+        },
+
+        calculatePercentages: function(){
+            //Percorre todo o array e calcula a porcentagem de cada elemento
+            data.allItems.exp.forEach(function(current){
+                current.calcPercentage(data.totals.inc);
+            });
+        },
+
+        getPercentages: function(){
+            //Percorre todo o array e recebe um array contendo as porcentagens de cada elemento
+            var allPerc = data.allItems.exp.map(function(current){
+                return current.getPercentage();
+            });
+
+            return allPerc;
         },
 
         calculateBudget: function(){
@@ -139,7 +173,8 @@ var UiController = (function(){
         incomeLabel: '.budget__income--value',
         expenseLabel: '.budget__expenses--value',
         percentageLabel: '.budget__expenses--percentage',
-        container: '.container'
+        container: '.container',
+        expensePercLabel: '.item__percentage'
     };
 
     return{
@@ -214,6 +249,32 @@ var UiController = (function(){
             
         },
 
+        displayPercentages: function(percentages){
+
+            //Retorna uma lista de nós (nodes) da DOM
+            var fields = document.querySelectorAll(DOMstrings.expensePercLabel);
+
+            //Este método vai percorrer a lista, e chamar a função callback passando o atual item
+            // da lista (current na callback) e o index desse item
+            var nodeListForEach = function(list, callback){
+                for(i = 0; i < list.length; i++){
+                    callback(list[i], i);
+                }
+            };
+
+            //Explicanddo pq aqui é foda: Ao chamar a nodeListForEach, é passado a lista e uma função callback
+            
+            nodeListForEach(fields, function(current, index){
+                //current é o atual nó do array de elementos, percentages[index] é a porcentagem de msm index 
+                //ddo array de porcentagens
+                if(percentages[index] > 0){
+                    current.textContent = percentages[index] + '%';
+                }else{
+                    current.textContent = '---';
+                }
+            });
+        },
+
         getDOMstrings: function(){
             return DOMstrings;
         }
@@ -251,6 +312,16 @@ var controller = (function(budgetCrtl, UICtrl){
 
     };
 
+    var updatePercentage = function(){
+
+        budgetCrtl.calculatePercentages();
+
+        var percentages = budgetCrtl.getPercentages();
+
+        UICtrl.displayPercentages(percentages);
+
+    };
+
     var ctrlAddItem = function(){
         
         var input, newItem;
@@ -268,6 +339,8 @@ var controller = (function(budgetCrtl, UICtrl){
             UICtrl.clearFields();
     
             updateBudget();
+
+            updatePercentage();
         }
 
         
@@ -293,6 +366,8 @@ var controller = (function(budgetCrtl, UICtrl){
             UICtrl.deleteListItem(itemID);
             //Atualiza o budget
             updateBudget();
+
+            updatePercentage();
         }
     };
 
