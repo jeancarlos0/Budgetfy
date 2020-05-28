@@ -174,8 +174,48 @@ var UiController = (function(){
         expenseLabel: '.budget__expenses--value',
         percentageLabel: '.budget__expenses--percentage',
         container: '.container',
-        expensePercLabel: '.item__percentage'
+        expensePercLabel: '.item__percentage',
+        dateLabel: '.budget__title--month'
     };
+
+    //Este método privado será chamado sempre que um valor for adicionado a UI
+    var formatNumber = function(number, type){
+        var numSplit, int, decimal;
+        //A variavel number recebe o valor absoluto da mesma
+        number = Math.abs(number);
+        //Método do protótipo do objeto number, vai limitar as casas decimais a 2
+        //OBS: Embora number seja primitivo o JS vai converter automaticamente para um objeto do tipo wraper, retorna uma string
+        number = number.toFixed(2);
+        //Divide a String em duas, separando entre antes e depois do ponto, retorna um array contendo as strings
+        numSplit = number.split('.');
+
+        int = numSplit[0];
+        decimal = numSplit[1];
+
+        //O número é maior que 1000
+        if(int.length > 3){
+            //1° argumento: Onde inicia a substring, 2° argumento: Qts elementos eu quero a partir do inicio
+            //Concatena o valor com uma virgula e com o valor da nv substring
+            //A nova substring começa a partir da posição um e lê 3 novos números (ex: se for 1000 o retorno será 1,000)
+            //int.length - 3 garante que em ex,s como 56340 o resultado seja 56,340
+            int  = int.substr(0,int.length - 3) + ',' + int.substr(int.length - 3, 3);
+        }
+        //operador ternário 
+        //var sign
+        //type === 'exp' ? sign = '-' : sign = '+';
+
+        return (type === 'exp' ? '-':'+') + ' ' + int + '.' + decimal;
+
+    };
+
+    //Este método vai percorrer a lista, e chamar a função callback passando o atual item
+    // da lista (current na callback) e o index desse item
+    var nodeListForEach = function(list, callback){
+        for(i = 0; i < list.length; i++){
+            callback(list[i], i);
+        }
+    };
+
 
     return{
         getInput: function(){
@@ -206,7 +246,8 @@ var UiController = (function(){
 
             newHtml = html.replace('%id%', obj.id);
             newHtml = newHtml.replace('%description%', obj.description);
-            newHtml = newHtml.replace('%value%', obj.value);
+            //Chama a função para formatar o número, passa o tipo de entrada tb
+            newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
 
 
             //Insere o componente HTML antes do fim do seu container
@@ -229,7 +270,7 @@ var UiController = (function(){
             
             fieldsArr = Array.prototype.slice.call(fields);
 
-            fieldsArr.forEach(function(current, index, array) {
+            fieldsArr.forEach(function(current) {
                 current.value = "";
             });
 
@@ -237,9 +278,14 @@ var UiController = (function(){
         },
 
         displayBudget: function(obj){
-            document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
-            document.querySelector(DOMstrings.expenseLabel).textContent = obj.totalExp;
-            document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
+
+            var type;
+
+            obj.budget > 0 ? type = 'inc' : type = 'exp';
+
+            document.querySelector(DOMstrings.budgetLabel).textContent = formatNumber(obj.budget, type);
+            document.querySelector(DOMstrings.expenseLabel).textContent = formatNumber(obj.totalExp, 'exp');
+            document.querySelector(DOMstrings.incomeLabel).textContent = formatNumber(obj.totalInc, 'inc');
             
             if(obj.percentage > 0){
                 document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage + '%';
@@ -254,13 +300,6 @@ var UiController = (function(){
             //Retorna uma lista de nós (nodes) da DOM
             var fields = document.querySelectorAll(DOMstrings.expensePercLabel);
 
-            //Este método vai percorrer a lista, e chamar a função callback passando o atual item
-            // da lista (current na callback) e o index desse item
-            var nodeListForEach = function(list, callback){
-                for(i = 0; i < list.length; i++){
-                    callback(list[i], i);
-                }
-            };
 
             //Explicanddo pq aqui é foda: Ao chamar a nodeListForEach, é passado a lista e uma função callback
             
@@ -275,6 +314,35 @@ var UiController = (function(){
             });
         },
 
+        displayDate: function(){
+            var now, month, months,year;
+            
+            months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+                    'October', 'November', 'December'];
+
+            now = new Date();
+            year = now.getFullYear();
+            month = now.getMonth();
+
+            document.querySelector(DOMstrings.dateLabel).textContent = months[month] + ' '+ year;
+        },
+
+        changedType: function(){
+            
+            //seleciona todos os elementos a quais será aplicada a classe, se ela já estiver aplicada ela é removida
+            var fields = document.querySelectorAll(
+                DOMstrings.inputType + ',' +
+                DOMstrings.inputValue + ',' +
+                DOMstrings.inputDescription
+            );
+
+            nodeListForEach(fields, function(cur){
+                cur.classList.toggle('red-focus');
+            });
+            document.querySelector(DOMstrings.inputBtn).classList.toggle('red');
+            
+        },
+        
         getDOMstrings: function(){
             return DOMstrings;
         }
@@ -298,6 +366,7 @@ var controller = (function(budgetCrtl, UICtrl){
         });   
         
         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
+        document.querySelector(DOM.inputType).addEventListener('change', UICtrl.changedType)
     };
     
 
@@ -373,6 +442,7 @@ var controller = (function(budgetCrtl, UICtrl){
 
     return{
         init: function(){
+            UICtrl.displayDate();
             //Inicia o painel com valores nulos
             UICtrl.displayBudget({
                 budget: 0,
@@ -381,6 +451,7 @@ var controller = (function(budgetCrtl, UICtrl){
                 percentage: -1
             });
             setupEventListeners();
+            
         }
     }
     
